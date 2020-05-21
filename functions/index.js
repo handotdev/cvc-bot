@@ -1,59 +1,59 @@
 const functions = require('firebase-functions');
 const axios = require('axios');
-
-// // Create and Deploy Your First Cloud Functions
-// // https://firebase.google.com/docs/functions/write-firebase-functions
-//
-// exports.helloWorld = functions.https.onRequest((request, response) => {
-//  response.send("Hello from Firebase!");
-// });
+const TimeAgo = require('javascript-time-ago');
+const en = require('javascript-time-ago/locale/en');
 
 // Time on every day Mon-Fri at 10 AM EST
-// exports.scheduleFunction = functions.pubsub.schedule('0 * * * 1-5')
-//     .timeZone('America/New_York')
-//     .onRun((context) => {
-        
-//         return null;
-//     });
+exports.scheduleFunction = functions.pubsub.schedule('0 18 * * *')
+    .timeZone('America/New_York')
+    .onRun(() => {
+        return sendMessage();
+    });
 
 function sendMessage() {
     getTopNews()
         .then((res) => {
-            let message = `Top Startup News for May 20`;
-            res.forEach((news, i) => message += `\n${i+1}: <${news.url}|${news.title}>`)
 
-            console.log(res);
-            return axios.post('https://hooks.slack.com/services/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', 
+            const d = new Date();
+
+            const dateString = `${['January', 'February', 'March', 'April', 
+            'May', 'June', 'July', 'August', 'September', 'October', 
+            'November', 'December'][d.getMonth()]} ${d.getDate()}`;
+
+            let header = `*Top Hacker News Articles on ${dateString}*`;
+            
+            // Set up timer
+            TimeAgo.addLocale(en);
+            const timeAgo = new TimeAgo('en-US');
+
+            const attachments = res.map((news, i) => {
+                return {
+                    "text": `:speech_balloon: ${news.title}\n_${timeAgo.format(news.time*1000)}_`,
+                        "actions": [
+                            {
+                                "type": "button",
+                                "text": "Read Article",
+                                "url": news.url,
+                                "style": "primary"
+                            }
+                        ],
+                        "fallback": `Test link button to ${news.url}`,
+                }
+            })
+
+            return axios.post('https://hooks.slack.com/services/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', 
             {
                 "blocks": [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": message
-                        }
-                    },
-                    {
-                        "type": "section",
-                        "block_id": "section567",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "<https://example.com|Overlook Hotel> \n :star: \n Doors had too many axe holes, guest in room 237 was far too rowdy, whole place felt stuck in the 1920s."
-                        },
-                        
-                    },
-                    {
-                        "type": "section",
-                        "block_id": "section789",
-                        "fields": [
-                            {
-                                "type": "mrkdwn",
-                                "text": "*Average Rating*\n1.0"
-                            }
-                        ]
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": header
                     }
-                ]
-            },
+                  },
+                ],
+                  "attachments": attachments
+              },
             {
                 headers: {
                     'Content-type': 'application/json'
@@ -94,5 +94,3 @@ function getArticle(articleId) {
             })
     })
 }
-
-// function getThumbnail
